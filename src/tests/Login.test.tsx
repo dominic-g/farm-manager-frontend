@@ -45,7 +45,7 @@ describe('Login Component', () => {
         renderWithProviders(<Login />);
         expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Login/i })).toBeInTheDocument();
     });
 
     it('handles successful login', async () => {
@@ -66,7 +66,7 @@ describe('Login Component', () => {
         fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password' } });
 
         // 3. Submit
-        fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Login/i }));
 
         // 4. Assertions
         await waitFor(() => {
@@ -91,7 +91,7 @@ describe('Login Component', () => {
         // 2. Fill & Submit
         fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: 'wrong' } });
         fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'wrong' } });
-        fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
+        fireEvent.click(screen.getByRole('button', { name: /Login/i }));
 
         // 3. Assertions
         await waitFor(() => {
@@ -100,7 +100,7 @@ describe('Login Component', () => {
             expect(mockedNavigate).not.toHaveBeenCalled();
             // In a real browser, a notification appears. 
             // We can check if the button is no longer loading or form is still there
-            expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Login/i })).toBeInTheDocument();
         });
     });
 });

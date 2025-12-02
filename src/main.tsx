@@ -10,9 +10,11 @@ import { AuthProvider } from './context/AuthContext'
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
+import '@mantine/charts/styles.css';
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <MantineProvider>
+    <MantineProvider defaultColorScheme="auto">
       <Notifications />
       <BrowserRouter>
         <AuthProvider>
