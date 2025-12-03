@@ -1,12 +1,15 @@
-import { Container, Title, Button, Group, SimpleGrid, Paper, Text, ThemeIcon, ActionIcon } from '@mantine/core';
-import { IconPlus, IconPaw, IconArrowRight } from '@tabler/icons-react';
+import { Container, Title, Button, Group, SimpleGrid, Paper, Text, ThemeIcon, ActionIcon, Tooltip } from '@mantine/core';
+import { IconPlus, IconArrowRight, IconEdit } from '@tabler/icons-react';
 import { useAnimalTypes } from '../hooks/useAnimalTypes';
 import { useNavigate } from 'react-router-dom';
 import { getIconComponent } from '../utils/iconMap';
 
+interface Props {
+    openCreateModal: () => void;
+    openEditModal: (id: number) => void;
+}
 
-
-export function AnimalTypesList({ openCreateModal }: { openCreateModal: () => void }) {
+export function AnimalTypesList({ openCreateModal, openEditModal }: Props) {
     const { data: types, isLoading } = useAnimalTypes();
     const navigate = useNavigate();
 
@@ -23,7 +26,6 @@ export function AnimalTypesList({ openCreateModal }: { openCreateModal: () => vo
                 <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }}>
                     {types?.map((type) => {
                         const Icon = getIconComponent(type.farm_icon);
-                        console.log(type.farm_icon," ",Icon);
                         return (
                             <Paper 
                                 key={type.id} 
@@ -31,16 +33,32 @@ export function AnimalTypesList({ openCreateModal }: { openCreateModal: () => vo
                                 p="md" 
                                 radius="md" 
                                 style={{ cursor: 'pointer', transition: 'all 0.2s' }}
-                                onClick={() => navigate(`/type/${type.id}`)}
+                                onClick={() => navigate(`/type/${type.slug}`)}
                                 // Add hover effect via CSS or sx
                             >
                                 <Group justify="space-between" mb="xs">
                                     <ThemeIcon size="xl" radius="md" variant="light" color="blue">
                                         <Icon size={24} />
                                     </ThemeIcon>
-                                    <ActionIcon variant="subtle" color="gray">
-                                        <IconArrowRight size={16} />
-                                    </ActionIcon>
+
+                                    <Group gap={5}>
+                                        <Tooltip label="Edit Configuration">
+                                            <ActionIcon 
+                                                variant="subtle" 
+                                                color="gray"
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Stop click from bubbling to Paper
+                                                    openEditModal(type.id);
+                                                }}
+                                            >
+                                                <IconEdit size={18} />
+                                            </ActionIcon>
+                                        </Tooltip>
+
+                                        <ActionIcon variant="subtle" color="gray">
+                                            <IconArrowRight size={16} />
+                                        </ActionIcon>
+                                    </Group>
                                 </Group>
                                 
                                 <Text fw={700} size="lg" mt="sm">

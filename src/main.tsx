@@ -5,6 +5,7 @@ import { Notifications } from '@mantine/notifications'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { SettingsProvider } from './context/SettingsContext'
 
 // Import Mantine Styles
 import '@mantine/core/styles.css';
@@ -18,7 +19,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <Notifications />
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <SettingsProvider>
+            <App />
+          </SettingsProvider>
         </AuthProvider>
       </BrowserRouter>
     </MantineProvider>

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 export interface AnimalType {
     id: number;
+    slug: string;
     title: { raw: string; rendered: string };
     farm_lifecycle?: any; // We'll define exact types later
     farm_feed?: any[];

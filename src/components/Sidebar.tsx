@@ -22,7 +22,7 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
 
   // Prepare Data for Searchable Select
   const selectData = types?.map(type => ({
-      value: String(type.id),
+      value: String(type.slug),
       label: type.title.rendered || type.title.raw
   })) || [];
 
@@ -30,11 +30,11 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
   const top10Types = types?.slice(0, 10).map(type => ({
     label: type.title.rendered || type.title.raw,
     icon: getIconComponent(type.farm_icon),
-    id: type.id,
+    id: type.slug,
     links: [ // Submenu for quick access
-        { label: 'Dashboard', link: `/type/${type.id}` },
-        { label: 'Animals', link: `/type/${type.id}/list` },
-        { label: 'Breeds', link: `/type/${type.id}/breeds` },
+        { label: 'Dashboard', link: `/type/${type.slug}` },
+        { label: 'Animals', link: `/type/${type.slug}/list` },
+        { label: 'Breeds', link: `/type/${type.slug}/breeds` },
     ]
   })) || [];
 

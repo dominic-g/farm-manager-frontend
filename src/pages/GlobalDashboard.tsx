@@ -5,6 +5,7 @@ import { StatsGrid } from '../components/Dashboard/StatsGrid';
 import { DashboardWidgets } from '../components/Dashboard/DashboardWidgets';
 import { AreaChart } from '@mantine/charts';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -19,6 +20,7 @@ const chartData = [
 
 export function GlobalDashboard() {
     const { user } = useAuth();
+    const { formatCurrency } = useSettings();
     
     // Fetch Summary Stats from our new PHP endpoint
     const { data: stats, isLoading } = useQuery({
@@ -44,8 +46,8 @@ export function GlobalDashboard() {
     const gridData = [
         { title: 'Total Animals', icon: 'paw', value: stats?.total_animals || '0', diff: 12 },
         { title: 'Animal Types', icon: 'discount', value: stats?.total_types || '0', diff: 0 },
-        { title: 'Revenue', icon: 'coin', value: `$${stats?.income || 0}`, diff: 18 },
-        { title: 'Expenses', icon: 'receipt', value: `$${stats?.expense || 0}`, diff: -5 },
+        { title: 'Revenue', icon: 'coin', value: formatCurrency(stats?.income || 0), diff: 0 },
+        { title: 'Expenses', icon: 'receipt', value: formatCurrency(stats?.expense || 0), diff: 0 },
     ];
 
     return (

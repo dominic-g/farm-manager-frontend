@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { useAuth } from './context/AuthContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { CreateAnimalTypeModal } from './components/Modals/CreateAnimalTypeModal';
-import { AnimalTypesList } from './pages/AnimalTypesList';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDisclosure } from '@mantine/hooks';
 import { GlobalDashboard } from './pages/GlobalDashboard';
+import { AnimalTypesList } from './pages/AnimalTypesList';
+import { AnimalTypeDashboard } from './pages/AnimalTypeDashboard';
+import { BreedsList } from './pages/BreedsList';
 
 // Setup Query Client
 const queryClient = new QueryClient();
@@ -24,6 +27,18 @@ const AnimalDashboard = () => <h2>Animal Type Dashboard (Coming Soon)</h2>;
 
 function AppContent() {
     const [opened, { open, close }] = useDisclosure(false);
+    const [editTypeId, setEditTypeId] = useState<number | null>(null);
+
+    // Helper functions passed down
+    const handleOpenCreate = () => {
+        setEditTypeId(null); // Clear ID = Create Mode
+        open();
+    };
+
+    const handleOpenEdit = (id: number) => {
+        setEditTypeId(id); // Set ID = Edit Mode
+        open();
+    };
 
     return (
         <>
@@ -40,25 +55,35 @@ function AppContent() {
                     </ProtectedRoute>
                 } />
 
-                <Route path="/type/:id/*" element={
+
+                <Route path="/types" element={
                     <ProtectedRoute>
-                        <MainLayout openCreateModal={open}>
-                            <AnimalDashboard />
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <AnimalTypesList openCreateModal={handleOpenCreate} openEditModal={handleOpenEdit} />
                         </MainLayout>
                     </ProtectedRoute>
                 } />
 
-                <Route path="/types" element={
+                <Route path="/type/:slug" element={
                     <ProtectedRoute>
-                        <MainLayout openCreateModal={open}>
-                            <AnimalTypesList openCreateModal={open} />
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <AnimalTypeDashboard openEditModal={handleOpenEdit}/>
                         </MainLayout>
                     </ProtectedRoute>
                 } />
+
+                <Route path="/type/:slug/breeds" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <BreedsList />
+                        </MainLayout>
+                    </ProtectedRoute>
+                } />
+
             </Routes>
             
             {/* The Modal lives here so it can be opened from anywhere */}
-            <CreateAnimalTypeModal opened={opened} close={close} />
+            <CreateAnimalTypeModal opened={opened} close={close} editTypeId={editTypeId}/>
         </>
     );
 }
