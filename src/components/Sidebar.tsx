@@ -14,10 +14,19 @@ import { LinksGroup } from './NavbarLinksGroup';
 import classes from './Sidebar.module.css';
 
 import { getIconComponent } from '../utils/iconMap';
+import { useLocation } from 'react-router-dom';
 
 export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
   const navigate = useNavigate();
-  const [section, setSection] = useState<'menu' | 'livestock'>('menu');
+  const location = useLocation();
+  // const [section, setSection] = useState<'menu' | 'livestock'>('menu');
+  const [section, setSection] = useState<'menu' | 'livestock'>(() => {
+      // If URL contains '/type/' or '/animal/', default to livestock tab
+      if (location.pathname.includes('/type/') || location.pathname.includes('/animal/')) {
+          return 'livestock';
+      }
+      return 'menu';
+  });
   const { data: types } = useAnimalTypes();
 
   // Prepare Data for Searchable Select
@@ -27,16 +36,22 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
   })) || [];
 
   // Prepare Top 10 List
-  const top10Types = types?.slice(0, 10).map(type => ({
-    label: type.title.rendered || type.title.raw,
-    icon: getIconComponent(type.farm_icon),
-    id: type.slug,
-    links: [ // Submenu for quick access
-        { label: 'Dashboard', link: `/type/${type.slug}` },
-        { label: 'Animals', link: `/type/${type.slug}/list` },
-        { label: 'Breeds', link: `/type/${type.slug}/breeds` },
-    ]
-  })) || [];
+  const top10Types = types?.slice(0, 10).map(type => {
+    const isActive = location.pathname.includes(`/type/${type.slug}`);
+
+    return {
+        label: type.title.rendered || type.title.raw,
+        icon: getIconComponent(type.farm_icon),
+        id: type.slug,
+        initiallyOpened: isActive, 
+        links: [
+            { label: 'Dashboard', link: `/type/${type.slug}` },
+            { label: 'Animals', link: `/type/${type.slug}/list` },
+            { label: 'Breeds', link: `/type/${type.slug}/breeds` },
+            { label: 'Groups', link: `/type/${type.slug}/groups` },
+        ]
+    };
+  }) || [];
 
   // Main Menu Links (Placeholders included as requested)
   const mainMenu = [

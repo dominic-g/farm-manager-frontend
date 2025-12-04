@@ -28,6 +28,7 @@ interface StatData {
   icon: string;
   value: string | number;
   diff: number; 
+  diffLabel?: string;
 }
 
 export function StatsGrid({ data }: { data: StatData[] }) {
@@ -76,7 +77,8 @@ export function StatsGrid({ data }: { data: StatData[] }) {
         </Group>
 
         <Text fz="xs" c="dimmed" mt={7} lineClamp={2}>
-          Compared to previous month
+          {/*Compared to previous month*/}
+          {stat.diffLabel || 'Compared to previous period'}
         </Text>
       </Paper>
     );

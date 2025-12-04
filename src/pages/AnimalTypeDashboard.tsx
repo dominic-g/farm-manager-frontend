@@ -14,7 +14,8 @@ import { StatsGrid } from '../components/Dashboard/StatsGrid';
 import { useAnimalTypes } from '../hooks/useAnimalTypes';
 import { IconEdit, IconTrash, IconAlertCircle } from '@tabler/icons-react';
 import { useSettings } from '../context/SettingsContext';
-import { NotFound } from './NotFound'; // Import 404 Page
+import { NotFound } from './NotFound';
+import { differenceInDays, format } from 'date-fns';
 
 import '@mantine/dates/styles.css';
 
@@ -30,20 +31,76 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
     
     const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
 
+    // 1. Get Type Data for Title & Edit ID
     const { data: types } = useAnimalTypes();
     const currentType = types?.find(t => t.slug === slug);
     const typeId = currentType?.id;
 
-    const dashboardTitle = currentType 
-        ? `${currentType.title.rendered || currentType.title.raw}'s Dashboard` 
-        : 'Loading...';
+    // 2. Grammar Fix for Title
+    const rawTitle = currentType?.title.rendered || currentType?.title.raw || 'Loading...';
+    const dashboardTitle = rawTitle.endsWith('s') 
+        ? `${rawTitle}' Dashboard` 
+        : `${rawTitle}'s Dashboard`;
 
     const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
         new Date(new Date().setDate(new Date().getDate() - 30)),
         new Date()
     ]);
 
-    // Fetch Stats
+    // Helper to generate dynamic label
+    const getComparisonLabel = () => {
+        if (!dateRange[0] || !dateRange[1]) return '';
+        const days = differenceInDays(dateRange[1], dateRange[0]) + 1; // +1 to include start date
+
+        // if (days >= 360 && days <= 370) return "Compared to previous year";
+        // if (days >= 28 && days <= 31) return "Compared to previous month";
+        // if (days === 7) return "Compared to previous week";
+        
+        // return `Compared to previous ${days} days`;
+
+
+        // 🔹 CASE 1 — Years + Months
+        if (days >= 375) {
+            const years = Math.floor(days / 365);
+            const remainingDays = days % 365;
+            const months = Math.round(remainingDays / 30);
+
+            const yearLabel = `${years}yr`;
+            const monthLabel = months > 0 ? `${months} month${months > 1 ? 's' : ''}` : '';
+
+            return `Compared to previous ${yearLabel} ${monthLabel}`.trim();
+        }
+
+        // 360–370 days → still previous year
+        if (days >= 360 && days <= 370) {
+            return "Compared to previous year";
+        }
+
+        // 🔹 CASE 2 — Months + Weeks
+        if (days >= 31) {
+            const months = Math.floor(days / 30);
+            const remainingDays = days % 30;
+            const weeks = Math.round(remainingDays / 7);
+
+            const monthLabel = `${months} month${months > 1 ? 's' : ''}`;
+            const weekLabel = weeks > 0 ? `${weeks} week${weeks > 1 ? 's' : ''}` : '';
+
+            return `Compared to previous ${monthLabel} ${weekLabel}`.trim();
+        }
+
+        // 28–31 days → previous month
+        if (days >= 28 && days <= 31) return "Compared to previous month";
+
+        // 7 days → previous week
+        if (days === 7) return "Compared to previous week";
+
+        // Default
+        return `Compared to previous ${days} days`;
+    };
+
+    const diffLabel = getComparisonLabel();
+
+    // 3. Fetch Stats
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['typeStats', slug, dateRange],
         queryFn: async () => {
@@ -56,7 +113,7 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
             return res.data;
         },
         enabled: !!slug && !!dateRange[0] && !!dateRange[1],
-        retry: false // Don't retry if 404
+        retry: false
     });
 
     const deleteMutation = useMutation({
@@ -75,28 +132,27 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
         }
     });
 
-    // --- 1. HANDLE 404 / ERRORS ---
+    // 4. Handle States
     if (isError) {
-        // If the error status is 404, show NotFound page
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-            return <NotFound />;
-        }
+        if (axios.isAxiosError(error) && error.response?.status === 404) return <NotFound />;
         return <Alert color="red" title="Error">Could not load dashboard</Alert>;
     }
 
     if (isLoading) return <LoadingOverlay visible={true} />;
 
-    // Transform Data
+    // 5. Transform Data
     const activeCount = data?.population?.find((p:any) => p.status === 'active')?.count || 0;
     const soldCount = data?.population?.find((p:any) => p.status === 'sold')?.count || 0;
     const deadCount = data?.population?.find((p:any) => p.status === 'dead')?.count || 0;
-    const slaughterCount = data?.population?.find((p:any) => p.status === 'slaughtered')?.count || 0; // New
+    const slaughterCount = data?.population?.find((p:any) => p.status === 'slaughtered')?.count || 0;
+
+    const stats = data?.stats_cards;
 
     const statsCards = [
-        { title: 'Active Animals', icon: 'paw', value: activeCount, diff: 0 },
-        { title: 'Feed Consumed', icon: 'scale', value: formatWeight(data?.feed?.total_kg || 0), diff: 0 },
-        { title: 'Feed Cost', icon: 'coin', value: formatCurrency(data?.feed?.total_cost || 0), diff: 0 },
-        { title: 'Total Sold', icon: 'receipt', value: soldCount, diff: 0 },
+        { title: 'Active Animals', icon: 'paw', value: activeCount, diff: 0, diffLabel: 'Total population change' },
+        { title: 'Feed Consumed', icon: 'scale', value: formatWeight(stats?.feed_kg?.value || 0), diff: stats?.feed_kg?.diff || 0, diffLabel },
+        { title: 'Feed Cost', icon: 'coin', value: formatCurrency(stats?.feed_cost?.value || 0), diff: stats?.feed_cost?.diff || 0, diffLabel },
+        { title: 'Total Sold', icon: 'receipt', value: soldCount, diff: 0, diffLabel},
     ];
 
     const chartData = data?.production?.reduce((acc: any[], curr: any) => {
@@ -108,6 +164,10 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
         }
         return acc;
     }, []) || [];
+
+    // Financial Totals for Bottom Card
+    const incTotal = data?.stats_cards?.income?.value || 0;
+    const expTotal = data?.stats_cards?.expense?.value || 0;
 
     return (
         <Container fluid>
@@ -174,8 +234,6 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
                 <Grid.Col span={{ base: 12, md: 4 }}>
                     <Paper withBorder p="md" radius="md" h="100%">
                         <Title order={4} mb="md">Population Health</Title>
-                        
-                        {/* 2. Added New Squares for Sold & Slaughtered */}
                         <SimpleGrid cols={2} spacing="xs">
                             <Paper bg="green.1" p="xs" radius="md">
                                 <Text size="xs" c="green.9">Active</Text>
@@ -198,17 +256,11 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
                         <Title order={4} mt="xl" mb="md">Financials</Title>
                         <Group justify="space-between" mb="xs">
                             <Text size="sm">Income</Text>
-                            <Text fw={700} c="teal">
-                                {/* 3. Apply Currency Formatting */}
-                                {formatCurrency(data?.finance?.find((f:any)=>f.type==='income')?.total || 0)}
-                            </Text>
+                            <Text fw={700} c="teal">{formatCurrency(incTotal)}</Text>
                         </Group>
                         <Group justify="space-between">
                             <Text size="sm">Expenses</Text>
-                            <Text fw={700} c="red">
-                                {/* 3. Apply Currency Formatting */}
-                                {formatCurrency(data?.finance?.find((f:any)=>f.type==='expense')?.total || 0)}
-                            </Text>
+                            <Text fw={700} c="red">{formatCurrency(expTotal)}</Text>
                         </Group>
                     </Paper>
                 </Grid.Col>

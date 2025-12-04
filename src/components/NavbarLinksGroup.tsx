@@ -9,7 +9,7 @@ interface LinksGroupProps {
   label: string;
   initiallyOpened?: boolean;
   links?: { label: string; link: string }[];
-  id?: number; // Special ID for Animal Types
+  id?: string | number; // Special ID for Animal Types
   link?: string; 
 }
 

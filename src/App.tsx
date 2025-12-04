@@ -9,8 +9,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDisclosure } from '@mantine/hooks';
 import { GlobalDashboard } from './pages/GlobalDashboard';
 import { AnimalTypesList } from './pages/AnimalTypesList';
+import { AnimalsList } from './pages/AnimalsList';
+import { GroupsList } from './pages/GroupsList';
 import { AnimalTypeDashboard } from './pages/AnimalTypeDashboard';
 import { BreedsList } from './pages/BreedsList';
+import { AnimalProfile } from './pages/AnimalProfile';
+
 
 // Setup Query Client
 const queryClient = new QueryClient();
@@ -56,6 +60,40 @@ function AppContent() {
                 } />
 
 
+
+                <Route path="/type/:slug/breeds" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <BreedsList />
+                        </MainLayout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/type/:slug/list" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <AnimalsList />
+                        </MainLayout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/type/:slug/groups" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <GroupsList />
+                        </MainLayout>
+                    </ProtectedRoute>
+                } />
+
+                {/* Specific Animal Route: /animal/cow/A409 */}
+                <Route path="/animal/:typeSlug/:tag" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                            <AnimalProfile />
+                        </MainLayout>
+                    </ProtectedRoute>
+                } />
+
                 <Route path="/types" element={
                     <ProtectedRoute>
                         <MainLayout openCreateModal={handleOpenCreate}>
@@ -68,14 +106,6 @@ function AppContent() {
                     <ProtectedRoute>
                         <MainLayout openCreateModal={handleOpenCreate}>
                             <AnimalTypeDashboard openEditModal={handleOpenEdit}/>
-                        </MainLayout>
-                    </ProtectedRoute>
-                } />
-
-                <Route path="/type/:slug/breeds" element={
-                    <ProtectedRoute>
-                        <MainLayout openCreateModal={handleOpenCreate}>
-                            <BreedsList />
                         </MainLayout>
                     </ProtectedRoute>
                 } />

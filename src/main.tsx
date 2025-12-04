@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { SettingsProvider } from './context/SettingsContext'
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Import Mantine Styles
 import '@mantine/core/styles.css';
@@ -17,13 +18,15 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <MantineProvider defaultColorScheme="auto">
       <Notifications />
-      <BrowserRouter>
-        <AuthProvider>
-          <SettingsProvider>
-            <App />
-          </SettingsProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <AuthProvider>
+            <SettingsProvider>
+              <App />
+            </SettingsProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ErrorBoundary> 
     </MantineProvider>
   </React.StrictMode>,
 )

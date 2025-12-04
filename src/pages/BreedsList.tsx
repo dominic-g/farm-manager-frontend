@@ -1,20 +1,49 @@
 import { useState } from 'react';
-import { Container, Title, Button, Group, Table, ActionIcon, Text, Badge, Paper } from '@mantine/core';
+import { Container, Title, Button, Group, Table, ActionIcon, Text, Badge, Paper, LoadingOverlay } from '@mantine/core';
 import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { useAnimalTypes } from '../hooks/useAnimalTypes';
 import { useBreeds } from '../hooks/useBreeds';
-// We will reuse the Create Modal but adapted for Breeds in next step
 import { CreateBreedModal } from '../components/Modals/CreateBreedModal'; 
+import { NotFound } from './NotFound';
 
 export function BreedsList() {
-    const { slug } = useParams();
-    const { data: types } = useAnimalTypes();
-    const currentType = types?.find(t => t.slug === slug);
+    // const { slug } = useParams();
+    // const { data: types } = useAnimalTypes();
+    // const currentType = types?.find(t => t.slug === slug);
     
-    const { data: breeds, isLoading } = useBreeds(currentType?.id);
+    // const { data: breeds, isLoading } = useBreeds(currentType?.id);
+    // const [modalOpened, setModalOpened] = useState(false);
+    // const [editId, setEditId] = useState<number | null>(null);
+
+    // const handleEdit = (id: number) => {
+    //     setEditId(id);
+    //     setModalOpened(true);
+    // };
+
+    // const handleCreate = () => {
+    //     setEditId(null);
+    //     setModalOpened(true);
+    // };
+    const { slug } = useParams();
+    const { data: types, isLoading: typesLoading } = useAnimalTypes();
+    
+    const currentType = types?.find(t => t.slug === slug);
+    const { data: breeds, isLoading: breedsLoading } = useBreeds(currentType?.id);
+    
     const [modalOpened, setModalOpened] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
+
+    const rawTitle = currentType?.title.rendered || 'Animal';
+    const title = rawTitle.endsWith('s') ? `${rawTitle}' Breeds` : `${rawTitle}'s Breeds`;
+
+    // Loading State
+    if (typesLoading) return <LoadingOverlay visible={true} />;
+
+    // 404 Check: If loaded, but slug doesn't match any type -> Show 404
+    if (!currentType) {
+        return <NotFound />;
+    }
 
     const handleEdit = (id: number) => {
         setEditId(id);
@@ -70,7 +99,7 @@ export function BreedsList() {
     return (
         <Container fluid>
             <Group justify="space-between" mb="lg">
-                <Title order={3}>{currentType?.title.rendered} Breeds</Title>
+                <Title order={3}>{title}</Title>
                 <Button leftSection={<IconPlus size={18}/>} onClick={handleCreate}>
                     Add Breed
                 </Button>
