@@ -27,7 +27,9 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
       }
       return 'menu';
   });
-  const { data: types } = useAnimalTypes();
+  // const { data: types } = useAnimalTypes();
+  const { data: typeData } = useAnimalTypes(1, 100);
+  const types = typeData?.data || [];
 
   // Prepare Data for Searchable Select
   const selectData = types?.map(type => ({

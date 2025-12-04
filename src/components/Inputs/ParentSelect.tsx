@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Select, Loader } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';

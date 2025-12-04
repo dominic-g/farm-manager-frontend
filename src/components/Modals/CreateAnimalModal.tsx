@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, MultiSelect, Button, Group, Stack, NumberInput, Divider, Tabs, Alert } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -14,14 +14,21 @@ interface Props {
     opened: boolean;
     close: () => void;
     parentType: any;
+    editData?: any;
 }
 
 const WP_API = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
 
-export function CreateAnimalModal({ opened, close, parentType }: Props) {
+export function CreateAnimalModal({ opened, close, parentType, editData }: Props) {
     const queryClient = useQueryClient();
-    const { data: breeds } = useBreeds(parentType?.id);
-    const { data: groups, createGroup } = useGroups(parentType?.id);
+    const isEdit = !!editData;
+    // const { data: breeds } = useBreeds(parentType?.id);
+    // const { data: groups, createGroup } = useGroups(parentType?.id);
+    const { data: breedResp } = useBreeds(parentType?.id, 1, true);
+    const breeds = breedResp?.data || [];
+
+    const { data: groupResp, createGroup } = useGroups(parentType?.id, 1, true);
+    const groups = groupResp?.data || [];
     
     const [groupSearch, setGroupSearch] = useState('');
     const [mode, setMode] = useState<string | null>('single');
@@ -51,6 +58,20 @@ export function CreateAnimalModal({ opened, close, parentType }: Props) {
 
     const lifecycle = parentType?.farm_lifecycle || {};
 
+    useEffect(() => {
+        if (opened && editData) {
+            form.setValues({
+                tag: editData.tag,
+                gender: editData.gender,
+                // ... map other fields ...
+                // Note: Breeds/Groups come as names in the list view, 
+                // you might need to fetch detailed animal data if IDs aren't present
+            });
+        } else if (opened && !editData) {
+            form.reset();
+        }
+    }, [opened, editData]);
+
     const mutation = useMutation({
         mutationFn: async (values: typeof form.values) => {
             const isBulk = mode === 'bulk';
@@ -71,7 +92,14 @@ export function CreateAnimalModal({ opened, close, parentType }: Props) {
                 farm_sire: values.sire,
                 farm_dam: values.dam,
             };
-            return axios.post(`${WP_API}/animals`, payload);
+            // return axios.post(`${WP_API}/animals`, payload);
+            if (isEdit) {
+                // UPDATE
+                return axios.put(`${WP_API}/farm_animal/${editData.ID}`, payload);
+            } else {
+                // CREATE
+                return axios.post(`${WP_API}/farm_animal`, payload);
+            }
         },
         onSuccess: (res) => {
             const count = res.data.created;
@@ -152,13 +180,13 @@ export function CreateAnimalModal({ opened, close, parentType }: Props) {
                     
 
     return (
-        <Modal opened={opened} onClose={close} title={`Add ${parentType?.title.rendered || 'Animal'}`} size="lg">
-            <Tabs value={mode} onChange={setMode} mb="md">
+        <Modal opened={opened} onClose={close} title={isEdit ? `Edit ${editData.tag}` :`Add ${parentType?.title.rendered || 'Animal'}`} size="lg">
+            {!isEdit && <Tabs value={mode} onChange={setMode} mb="md">
                 <Tabs.List>
                     <Tabs.Tab value="single">Single Entry</Tabs.Tab>
                     <Tabs.Tab value="bulk">Bulk Entry</Tabs.Tab>
                 </Tabs.List>
-            </Tabs>
+            </Tabs>}
 
             <form onSubmit={form.onSubmit((v) => mutation.mutate(v))}>
                 <Stack>

@@ -15,13 +15,15 @@ import { useAnimalTypes } from '../hooks/useAnimalTypes';
 import { IconEdit, IconTrash, IconAlertCircle } from '@tabler/icons-react';
 import { useSettings } from '../context/SettingsContext';
 import { NotFound } from './NotFound';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays } from 'date-fns'; // removed 'format' unused
 
 import '@mantine/dates/styles.css';
 
 interface Props {
     openEditModal: (id: number) => void;
 }
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1'); // Ensure this is defined
 
 export function AnimalTypeDashboard({ openEditModal }: Props) {
     const { slug } = useParams();
@@ -31,12 +33,16 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
     
     const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
 
-    // 1. Get Type Data for Title & Edit ID
-    const { data: types } = useAnimalTypes();
-    const currentType = types?.find(t => t.slug === slug);
+    // 1. Get Type Data
+    // const { data: types } = useAnimalTypes();
+    // const currentType = types?.data?.find(t => t.slug === slug); // Access .data
+    
+    const { data: typeData } = useAnimalTypes(1, 100);
+    const types = typeData?.data || [];
+    const currentType = types.find(t => t.slug === slug);
     const typeId = currentType?.id;
 
-    // 2. Grammar Fix for Title
+    // 2. Title Logic
     const rawTitle = currentType?.title.rendered || currentType?.title.raw || 'Loading...';
     const dashboardTitle = rawTitle.endsWith('s') 
         ? `${rawTitle}' Dashboard` 
@@ -47,54 +53,15 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
         new Date()
     ]);
 
-    // Helper to generate dynamic label
+    // Helper: Dynamic Label
     const getComparisonLabel = () => {
         if (!dateRange[0] || !dateRange[1]) return '';
-        const days = differenceInDays(dateRange[1], dateRange[0]) + 1; // +1 to include start date
+        const days = differenceInDays(dateRange[1], dateRange[0]) + 1;
 
-        // if (days >= 360 && days <= 370) return "Compared to previous year";
-        // if (days >= 28 && days <= 31) return "Compared to previous month";
-        // if (days === 7) return "Compared to previous week";
-        
-        // return `Compared to previous ${days} days`;
-
-
-        // 🔹 CASE 1 — Years + Months
-        if (days >= 375) {
-            const years = Math.floor(days / 365);
-            const remainingDays = days % 365;
-            const months = Math.round(remainingDays / 30);
-
-            const yearLabel = `${years}yr`;
-            const monthLabel = months > 0 ? `${months} month${months > 1 ? 's' : ''}` : '';
-
-            return `Compared to previous ${yearLabel} ${monthLabel}`.trim();
-        }
-
-        // 360–370 days → still previous year
-        if (days >= 360 && days <= 370) {
-            return "Compared to previous year";
-        }
-
-        // 🔹 CASE 2 — Months + Weeks
-        if (days >= 31) {
-            const months = Math.floor(days / 30);
-            const remainingDays = days % 30;
-            const weeks = Math.round(remainingDays / 7);
-
-            const monthLabel = `${months} month${months > 1 ? 's' : ''}`;
-            const weekLabel = weeks > 0 ? `${weeks} week${weeks > 1 ? 's' : ''}` : '';
-
-            return `Compared to previous ${monthLabel} ${weekLabel}`.trim();
-        }
-
-        // 28–31 days → previous month
+        if (days >= 360 && days <= 370) return "Compared to previous year";
         if (days >= 28 && days <= 31) return "Compared to previous month";
-
-        // 7 days → previous week
         if (days === 7) return "Compared to previous week";
-
-        // Default
+        
         return `Compared to previous ${days} days`;
     };
 
@@ -108,8 +75,8 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
             const start = dateRange[0].toISOString().split('T')[0];
             const end = dateRange[1].toISOString().split('T')[0];
             
-            const rootApi = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '');
-            const res = await axios.get(`${rootApi}/farm/v1/stats/type/${slug}?start_date=${start}&end_date=${end}`);
+            // Use API_BASE constant
+            const res = await axios.get(`${API_BASE}/stats/type/${slug}?start_date=${start}&end_date=${end}`);
             return res.data;
         },
         enabled: !!slug && !!dateRange[0] && !!dateRange[1],
@@ -149,10 +116,10 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
     const stats = data?.stats_cards;
 
     const statsCards = [
-        { title: 'Active Animals', icon: 'paw', value: activeCount, diff: 0, diffLabel: 'Total population change' },
+        { title: 'Active Animals', icon: 'paw', value: activeCount, diff: stats?.active_diff || 0, diffLabel: 'Total population change' },
         { title: 'Feed Consumed', icon: 'scale', value: formatWeight(stats?.feed_kg?.value || 0), diff: stats?.feed_kg?.diff || 0, diffLabel },
         { title: 'Feed Cost', icon: 'coin', value: formatCurrency(stats?.feed_cost?.value || 0), diff: stats?.feed_cost?.diff || 0, diffLabel },
-        { title: 'Total Sold', icon: 'receipt', value: soldCount, diff: 0, diffLabel},
+        { title: 'Total Sold', icon: 'receipt', value: soldCount, diff: 0, diffLabel },
     ];
 
     const chartData = data?.production?.reduce((acc: any[], curr: any) => {
@@ -165,7 +132,6 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
         return acc;
     }, []) || [];
 
-    // Financial Totals for Bottom Card
     const incTotal = data?.stats_cards?.income?.value || 0;
     const expTotal = data?.stats_cards?.expense?.value || 0;
 
@@ -224,7 +190,7 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
                                 curveType="monotone"
                             />
                         ) : (
-                            <Group h={200} align="center" justify="center">
+                            <Group h={300} align="center" justify="center">
                                 <Text c="dimmed">No production data for this period</Text>
                             </Group>
                         )}
@@ -261,6 +227,12 @@ export function AnimalTypeDashboard({ openEditModal }: Props) {
                         <Group justify="space-between">
                             <Text size="sm">Expenses</Text>
                             <Text fw={700} c="red">{formatCurrency(expTotal)}</Text>
+                        </Group>
+                        <Group justify="space-between" pt="xs" style={{ borderTop: '1px solid #eee' }}>
+                            <Text size="sm" fw={700}>Profit</Text>
+                            <Text fw={700} c={incTotal - expTotal >= 0 ? 'green' : 'red'}>
+                                {formatCurrency(incTotal - expTotal)}
+                            </Text>
                         </Group>
                     </Paper>
                 </Grid.Col>

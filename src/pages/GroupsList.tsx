@@ -1,37 +1,38 @@
 import { useState } from 'react';
-import { Container, Title, Group, Table, Paper, ActionIcon, TextInput, Text, LoadingOverlay } from '@mantine/core';
+import { Container, Title, Group, Table, Paper, ActionIcon, TextInput, Text, LoadingOverlay, Pagination } from '@mantine/core';
 import { IconTrash, IconEdit, IconSearch } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAnimalTypes } from '../hooks/useAnimalTypes';
 import { useGroups } from '../hooks/useGroups';
-import type { FarmGroup } from '../hooks/useGroups';
+import type { FarmGroup } from '../hooks/useGroups'; // Ensure correct import
 import { notifications } from '@mantine/notifications';
-import { GroupActionModal } from '../components/Modals/GroupActionModal'; // Import the new modal
+import { GroupActionModal } from '../components/Modals/GroupActionModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
 
 export function GroupsList() {
     const { slug } = useParams();
-    const { data: types } = useAnimalTypes();
-    const currentType = types?.find(t => t.slug === slug);
     
-    const { data: groups, isLoading } = useGroups(currentType?.id);
-    const queryClient = useQueryClient();
+    // FIX: Extract data
+    const { data: typeData } = useAnimalTypes(1, 100);
+    const types = typeData?.data || [];
+    const currentType = types.find(t => t.slug === slug);
+    
+    const [page, setPage] = useState(1);
+    
+    // FIX: Extract data
+    const { data: groupData, isLoading } = useGroups(currentType?.id, page);
+    const groups = groupData?.data || [];
+    const totalPages = groupData?.totalPages || 1;
 
-    // Local State
+    const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
-    
-    // We only need ONE state object now to track which group is being managed
     const [selectedGroup, setSelectedGroup] = useState<FarmGroup | null>(null);
 
-    // Filter Logic
-    const filteredGroups = Array.isArray(groups) 
-        ? groups.filter(g => g.name.toLowerCase().includes(search.toLowerCase())) 
-        : [];
+    const filteredGroups = groups.filter((g: any) => g.name.toLowerCase().includes(search.toLowerCase()));
 
-    // Delete Mutation (Still needed here as it happens on the list)
     const deleteMutation = useMutation({
         mutationFn: async (id: number) => {
             return axios.delete(`${API_BASE}/groups/${id}`);
@@ -41,6 +42,7 @@ export function GroupsList() {
             notifications.show({ title: 'Deleted', message: 'Group removed', color: 'red' });
         }
     });
+
     const rawTitle = currentType?.title.rendered || 'Animal';
     const title = rawTitle.endsWith('s') ? `${rawTitle}' Groups` : `${rawTitle}'s Groups`;
 
@@ -69,20 +71,15 @@ export function GroupsList() {
                         </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                        {filteredGroups.map(group => (
+                        {filteredGroups.map((group: any) => (
                             <Table.Tr key={group.id}>
                                 <Table.Td fw={500}>{group.name}</Table.Td>
-                                <Table.Td>
-                                    <Text size="sm" c="dimmed">-</Text> 
-                                </Table.Td>
+                                <Table.Td><Text size="sm" c="dimmed">-</Text></Table.Td>
                                 <Table.Td>
                                     <Group justify="flex-end" gap="xs">
-                                        {/* EDIT BUTTON: Opens the new Modal */}
                                         <ActionIcon variant="subtle" color="blue" onClick={() => setSelectedGroup(group)}>
                                             <IconEdit size={16}/>
                                         </ActionIcon>
-                                        
-                                        {/* DELETE BUTTON: Stays here */}
                                         <ActionIcon variant="subtle" color="red" onClick={() => {
                                             if(confirm('Delete this group?')) deleteMutation.mutate(group.id);
                                         }}>
@@ -96,7 +93,6 @@ export function GroupsList() {
                 </Table>
             </Paper>
 
-            {/* The New Modal handles the Editing Logic internally */}
             {selectedGroup && (
                 <GroupActionModal 
                     opened={!!selectedGroup} 
@@ -105,6 +101,12 @@ export function GroupsList() {
                     typeId={currentType.id}
                     parentType={currentType}
                 />
+            )}
+
+            {totalPages > 1 && (
+                <Group justify="center" mt="lg">
+                    <Pagination total={totalPages} value={page} onChange={setPage} />
+                </Group>
             )}
         </Container>
     );

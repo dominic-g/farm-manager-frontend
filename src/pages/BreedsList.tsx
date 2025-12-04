@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, Title, Button, Group, Table, ActionIcon, Text, Badge, Paper, LoadingOverlay } from '@mantine/core';
+import { Container, Title, Button, Group, Table, ActionIcon, Text, Badge, Paper, LoadingOverlay, Pagination } from '@mantine/core';
 import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { useAnimalTypes } from '../hooks/useAnimalTypes';
@@ -8,39 +8,37 @@ import { CreateBreedModal } from '../components/Modals/CreateBreedModal';
 import { NotFound } from './NotFound';
 
 export function BreedsList() {
-    // const { slug } = useParams();
-    // const { data: types } = useAnimalTypes();
-    // const currentType = types?.find(t => t.slug === slug);
-    
-    // const { data: breeds, isLoading } = useBreeds(currentType?.id);
-    // const [modalOpened, setModalOpened] = useState(false);
-    // const [editId, setEditId] = useState<number | null>(null);
-
-    // const handleEdit = (id: number) => {
-    //     setEditId(id);
-    //     setModalOpened(true);
-    // };
-
-    // const handleCreate = () => {
-    //     setEditId(null);
-    //     setModalOpened(true);
-    // };
     const { slug } = useParams();
-    const { data: types, isLoading: typesLoading } = useAnimalTypes();
     
-    const currentType = types?.find(t => t.slug === slug);
-    const { data: breeds, isLoading: breedsLoading } = useBreeds(currentType?.id);
+    // 1. Fetch ALL types (per_page=100) to ensure we find the current one by slug
+    // We cannot rely on default 10 here because the specific type might be on page 2
+    const { data: typeData, isLoading: typesLoading } = useAnimalTypes(1, 100);
+    // const currentType = typeData?.data?.find(t => t.slug === slug);
+    const types = typeData?.data || []; 
+    const currentType = types.find(t => t.slug === slug);
+    
+    // 2. Pagination State
+    const [page, setPage] = useState(1);
+
+    // 3. Fetch Breeds (Paginated)
+    // We pass the 'page' state to the hook
+    const { data: breedResponse, isLoading: breedsLoading } = useBreeds(currentType?.id, page);
+    
+    // Extract data safely from the response envelope
+    const breeds = breedResponse?.data || [];
+    const totalPages = breedResponse?.totalPages || 1;
     
     const [modalOpened, setModalOpened] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
 
+    // Title Logic (Preserved)
     const rawTitle = currentType?.title.rendered || 'Animal';
     const title = rawTitle.endsWith('s') ? `${rawTitle}' Breeds` : `${rawTitle}'s Breeds`;
 
     // Loading State
     if (typesLoading) return <LoadingOverlay visible={true} />;
 
-    // 404 Check: If loaded, but slug doesn't match any type -> Show 404
+    // 404 Check
     if (!currentType) {
         return <NotFound />;
     }
@@ -106,6 +104,7 @@ export function BreedsList() {
             </Group>
 
             <Paper withBorder radius="md">
+                <LoadingOverlay visible={breedsLoading} />
                 <Table>
                     <Table.Thead>
                         <Table.Tr>
@@ -120,7 +119,7 @@ export function BreedsList() {
                         {rows}
                         {breeds?.length === 0 && (
                             <Table.Tr>
-                                <Table.Td colSpan={4}>
+                                <Table.Td colSpan={5}>
                                     <Text c="dimmed" ta="center" py="md">No breeds defined. Animals will use generic settings.</Text>
                                 </Table.Td>
                             </Table.Tr>
@@ -128,6 +127,13 @@ export function BreedsList() {
                     </Table.Tbody>
                 </Table>
             </Paper>
+
+            {/* Pagination Control */}
+            {totalPages > 1 && (
+                <Group justify="center" mt="xl">
+                    <Pagination total={totalPages} value={page} onChange={setPage} />
+                </Group>
+            )}
 
             {currentType && (
                 <CreateBreedModal 

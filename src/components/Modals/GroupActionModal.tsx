@@ -55,13 +55,13 @@ export function GroupActionModal({ opened, close, group, typeId, parentType }: P
 
     const logMutation = useMutation({
         mutationFn: async (values: typeof logForm.values) => {
-            // PHASE 8 PREVIEW: This endpoint doesn't exist yet, but this is how we will call it
-            return axios.post(`${API_BASE}/logs/bulk`, {
+            return axios.post(`${API_BASE}/logs`, { 
                 group_id: group.id,
                 event_type: values.type,
                 event_date: values.date.toISOString(),
                 value: values.value,
-                notes: values.notes
+                notes: values.notes,
+                is_total_value: true
             });
         },
         onSuccess: () => {

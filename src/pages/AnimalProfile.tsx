@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Grid, Paper, Title, Group, Text, Badge, Stack, LoadingOverlay, ThemeIcon, Button, SimpleGrid } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { IconScale, IconBowl, IconCoin, IconGenderMale, IconGenderFemale, IconDn
 import { NotFound } from './NotFound';
 import { WeightBattery } from '../components/Visuals/WeightBattery';
 import { useSettings } from '../context/SettingsContext';
+import { LogEventModal } from '../components/Modals/LogEventModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
 
@@ -14,7 +16,10 @@ export function AnimalProfile() {
     const { typeSlug, tag } = useParams();
     const navigate = useNavigate();
     const { formatWeight, formatCurrency, settings } = useSettings();
+    const [logModal, setLogModal] = useState<{ open: boolean, type: string }>({ open: false, type: 'feed' });
 
+    // Helper to open modal
+    const openLog = (type: string) => setLogModal({ open: true, type });
     const { data: animal, isLoading, isError } = useQuery({
         queryKey: ['animal', typeSlug, tag],
         queryFn: async () => {
@@ -28,6 +33,10 @@ export function AnimalProfile() {
 
     if (isLoading) return <LoadingOverlay visible={true} />;
     if (isError || !animal) return <NotFound />;
+
+    const reproductionType = animal.config?.lifecycle?.type || 'birth';
+    const productionEventType = reproductionType === 'hatching' ? 'produce_egg' : 'produce_milk';
+    const productionLabel = reproductionType === 'hatching' ? 'Eggs' : 'Milk';
 
     // DATA TRANSFORMATION FOR CHARTS
     
@@ -81,6 +90,13 @@ export function AnimalProfile() {
                             <Badge key={g.id} variant="filled" color="blue">{g.name}</Badge>
                         ))}
                     </Group>
+
+                    {/*<Button 
+                        size="xs" variant="light" 
+                        onClick={() => setLogModal({ open: true, type: 'weight' })} // Open Modal
+                    >
+                        Log Weight
+                    </Button>*/}
                 </Stack>
 
                 {/* Parentage Links */}
@@ -150,12 +166,14 @@ export function AnimalProfile() {
                 {/* Weight Chart */}
                 <Grid.Col span={{ base: 12, md: 8 }}>
                     <Paper withBorder p="md" radius="md" h="100%">
-                        <Group justify="space-between" mb="md">
-                            <Group>
-                                <IconScale size={20} />
-                                <Text fw={700}>Growth Curve</Text>
+                        <Group justify="space-between" mb="md" wrap="nowrap">
+                            <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                                <IconScale size={20} style={{ flexShrink: 0 }} />
+                                <Text fw={700} truncate>Growth Curve</Text>
                             </Group>
-                            <Button size="xs" variant="light">Log Weight</Button>
+                            <Button size="xs" variant="light" onClick={() => openLog('weight')} style={{ flexShrink: 0 }}>
+                                Log Weight
+                            </Button>
                         </Group>
                         <AreaChart
                             h={250}
@@ -174,12 +192,14 @@ export function AnimalProfile() {
                 {/* Feed Consumption */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper withBorder p="md" radius="md" h="100%">
-                        <Group justify="space-between" mb="md">
-                            <Group>
-                                <IconBowl size={20} />
-                                <Text fw={700}>Feed Intake</Text>
+                        <Group justify="space-between" mb="md" wrap="nowrap">
+                            <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                                <IconBowl size={20} style={{ flexShrink: 0 }} />
+                                <Text fw={700} truncate>Feed Intake</Text>
                             </Group>
-                            <Button size="xs" variant="light" color="orange">Log Feed</Button>
+                            <Button size="xs" variant="light" color="orange" onClick={() => openLog('feed')} style={{ flexShrink: 0 }}>
+                                Log Feed
+                            </Button>
                         </Group>
                         {feedData.length > 0 ? (
                             <BarChart
@@ -197,12 +217,14 @@ export function AnimalProfile() {
                 {/* Production (Milk/Eggs) */}
                 <Grid.Col span={{ base: 12, md: 6 }}>
                     <Paper withBorder p="md" radius="md" h="100%">
-                        <Group justify="space-between" mb="md">
-                            <Group>
-                                <IconCalendarEvent size={20} />
-                                <Text fw={700}>Production Output</Text>
+                        <Group justify="space-between" mb="md" wrap="nowrap">
+                            <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                                <IconCalendarEvent size={20} style={{ flexShrink: 0 }} />
+                                <Text fw={700} truncate>Production ({productionLabel})</Text>
                             </Group>
-                            <Button size="xs" variant="light" color="green">Log Production</Button>
+                            <Button size="xs" variant="light" color="green" onClick={() => openLog(productionEventType)} style={{ flexShrink: 0 }}>
+                                Log {productionLabel}
+                            </Button>
                         </Group>
                         {productionData.length > 0 ? (
                             <LineChart
@@ -234,6 +256,15 @@ export function AnimalProfile() {
                     {/* Add more logic here later based on Type Schedule */}
                 </SimpleGrid>
             </Paper>
+
+
+            <LogEventModal 
+                opened={logModal.open}
+                close={() => setLogModal({ ...logModal, open: false })}
+                animalIds={animal ? [animal.id] : []} // Pass Single ID
+                initialEventType={logModal.type}
+                parentType={animal?.config}
+            />
 
         </Container>
     );
