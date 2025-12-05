@@ -14,6 +14,11 @@ import { GroupsList } from './pages/GroupsList';
 import { AnimalTypeDashboard } from './pages/AnimalTypeDashboard';
 import { BreedsList } from './pages/BreedsList';
 import { AnimalProfile } from './pages/AnimalProfile';
+import { FinanceList } from './pages/FinanceList';
+import { FinanceDashboard } from './pages/FinanceDashboard';
+import { ResourcesList } from './pages/ResourcesList';
+import { ResourcesDashboard } from './pages/ResourcesDashboard';
+import { ResourceDetails } from './pages/ResourceDetails';
 
 
 // Setup Query Client
@@ -107,6 +112,34 @@ function AppContent() {
                         <MainLayout openCreateModal={handleOpenCreate}>
                             <AnimalTypeDashboard openEditModal={handleOpenEdit}/>
                         </MainLayout>
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/resources/:id" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><ResourceDetails /></MainLayout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/resources/list" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><ResourcesList /></MainLayout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/resources" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><ResourcesDashboard /></MainLayout>
+                    </ProtectedRoute>
+                } />
+
+                // Finance
+                <Route path="/finance/list" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><FinanceList /></MainLayout>
+                    </ProtectedRoute>
+                } />
+                <Route path="/finance" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><FinanceDashboard /></MainLayout>
                     </ProtectedRoute>
                 } />
 

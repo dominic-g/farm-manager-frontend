@@ -6,15 +6,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { notifications } from '@mantine/notifications';
 import { useSettings } from '../../context/SettingsContext';
+import { useQuery } from '@tanstack/react-query';
 
 interface Props {
     opened: boolean;
     close: () => void;
-    // Context: Who are we logging for?
-    animalIds?: number[]; // Single or Bulk IDs
-    groupId?: number;     // Or a Group ID
+    animalIds?: number[];
+    groupId?: number;
     initialEventType?: string;
-    parentType?: any
+    parentType?: any;
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
@@ -23,10 +23,68 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
     const queryClient = useQueryClient();
     const { settings } = useSettings();
 
-    // Feed Logic: Extract feeds from parentType config
+    // 1. Fetch Inventory
+    const { data: inventory } = useQuery({
+        queryKey: ['inventory_list'],
+        queryFn: async () => {
+            const res = await axios.get(`${API_BASE}/resources`);
+            return Array.isArray(res.data) ? res.data : (res.data.data || []);
+        }
+    });
+
+    const form = useForm({
+        initialValues: {
+            event_type: initialEventType || 'feed',
+            date: new Date(),
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+            value: '', 
+            dead_weight: '',
+            meat_weight: '',
+            sold_qty: '',
+            income: '',
+            feed_name: '',
+            feed_source: 'inventory',
+            resource_id: '',
+            notes: '',
+            cost: '',
+            is_total_value: false,
+        },
+    });
+
+    // 2. Filter Inventory
+    const inventoryOptions = inventory
+        ?.filter((item: any) => {
+            // Basic Type Match
+            if (form.values.event_type === 'feed' && item.type !== 'feed') return false;
+            if (form.values.event_type === 'medical' && item.type !== 'medicine') return false;
+            
+            // Animal Restriction Logic
+            let allowedTypes: string[] = [];
+            if (item.target_type_ids) {
+                try {
+                    const parsed = typeof item.target_type_ids === 'string' 
+                        ? JSON.parse(item.target_type_ids) 
+                        : item.target_type_ids;
+                    if (Array.isArray(parsed)) allowedTypes = parsed.map(String);
+                } catch(e) {}
+            }
+
+            // If restricted, check compatibility
+            if (allowedTypes.length > 0 && parentType?.id) {
+                if (!allowedTypes.includes(String(parentType.id))) return false;
+            }
+
+            // If allowedTypes is empty, it returns true (Available to all)
+            return true;
+        })
+        .map((item: any) => ({
+            value: String(item.id),
+            label: `${item.name} (${item.stock_current} ${item.unit} avail)` 
+        })) || [];
+
+    // Feed Autocomplete Logic
     const availableFeeds = useMemo(() => {
         if (!parentType?.farm_feed) return [];
-        // Flatten all stages to get unique feed names
         const feeds = new Set<string>();
         parentType.farm_feed.forEach((stage: any) => {
             stage.items?.forEach((item: any) => feeds.add(item.name));
@@ -34,32 +92,7 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
         return Array.from(feeds);
     }, [parentType]);
     
-    const form = useForm({
-        initialValues: {
-            event_type: initialEventType || 'feed',
-            date: new Date(),
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-            
-            value: '', // Primary (Live Weight, Milk L, Feed kg)
-            
-            // Slaughter Specifics
-            dead_weight: '',
-            meat_weight: '',
-            
-            // Sales/Production Specifics
-            sold_qty: '',
-            income: '',
-            
-            // Feed Specifics
-            feed_name: '',
-            feed_source: 'inventory', // inventory vs direct
-            
-            notes: '',
-            cost: '',
-            is_total_value: false, // "Divide among group"
-        },
-    });
-    // SYNC PROP TO FORM: When modal opens, update the event type
+    // Sync Prop
     useEffect(() => {
         if (opened && initialEventType) {
             form.setFieldValue('event_type', initialEventType);
@@ -89,13 +122,13 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
                 dead_weight: values.dead_weight,
                 meat_weight: values.meat_weight,
                 sold_qty: values.sold_qty,
+
+                resource_id: values.feed_source === 'inventory' ? values.resource_id : null
             };
             return axios.post(`${API_BASE}/logs`, payload);
         },
         onSuccess: (res) => {
             notifications.show({ title: 'Logged', message: res.data.message, color: 'green' });
-            // queryClient.invalidateQueries({ queryKey: ['animal'] }); // Refresh Profile
-            // queryClient.invalidateQueries({ queryKey: ['typeStats'] }); // Refresh Dashboard
             queryClient.invalidateQueries();
             close();
             form.reset();
@@ -108,22 +141,25 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
     const isMultiTarget = (animalIds && animalIds.length > 1) || !!groupId;
     const type = form.values.event_type;
 
+    // Helper Labels
+    const isFeed = type === 'feed';
+    const isMedical = type === 'medical';
+    
     // Dynamic Labels based on Type
     const getTypeConfig = (type: string) => {
         switch(type) {
-            case 'feed': return { valLabel: 'Amount (kg)', noteLabel: 'Feed Name (e.g. Starter)', showTotal: true };
-            case 'weight': return { valLabel: 'New Weight (kg)', noteLabel: 'Notes', showTotal: false };
-            case 'medical': return { valLabel: 'Dosage (ml/mg)', noteLabel: 'Medication Name', showTotal: false };
+            case 'feed': return { valLabel: `Amount (${settings.weightUnit})`, noteLabel: 'Notes', showTotal: true };
+            case 'weight': return { valLabel: `New Weight (${settings.weightUnit})`, noteLabel: 'Notes', showTotal: false };
+            case 'medical': return { valLabel: 'Dosage (ml/mg)', noteLabel: 'Notes', showTotal: false };
             case 'produce_egg': return { valLabel: 'Quantity (Count)', noteLabel: 'Notes', showTotal: true };
             case 'produce_milk': return { valLabel: 'Volume (Liters)', noteLabel: 'Notes', showTotal: true };
             case 'death': return { valLabel: 'N/A', noteLabel: 'Cause of Death', showTotal: false };
-            case 'sale': return { valLabel: 'Sale Price (Total)', noteLabel: 'Buyer Name', showTotal: true };
+            case 'sale': return { valLabel: `Sale Price (${settings.currency})`, noteLabel: 'Buyer Name', showTotal: true };
             default: return { valLabel: 'Value', noteLabel: 'Notes', showTotal: false };
         }
     };
 
-    const config = getTypeConfig(form.values.event_type);
-    // const isMultiTarget = (animalIds && animalIds.length > 1) || !!groupId;
+    const config = getTypeConfig(type);
 
     return (
         <Modal opened={opened} onClose={close} title="Log Activity" size="lg">
@@ -147,80 +183,77 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
 
                     <Divider />
 
-                    {/* --- FEED LOGIC --- */}
-                    {type === 'feed' && (
+                    {/* --- FEED & MEDICAL LOGIC (INVENTORY SOURCE) --- */}
+                    {(isFeed || isMedical) && (
                         <>
-                            <Group grow align="flex-end">
-                                <Autocomplete 
-                                    label="Feed Type"
-                                    placeholder="Select or Type..."
-                                    data={availableFeeds}
-                                    {...form.getInputProps('feed_name')}
-                                />
-                                <TextInput 
-                                    label={`Amount (${settings.weightUnit})`} 
-                                    placeholder="0.00" type="number" 
-                                    {...form.getInputProps('value')} 
-                                />
-                            </Group>
-                            
                             <Text size="sm" fw={500} mt="sm">Source</Text>
                             <SegmentedControl
                                 fullWidth
                                 data={[
-                                    { label: 'From Inventory (Implied Cost)', value: 'inventory' },
-                                    { label: 'Bought Directly (New Expense)', value: 'direct' }
+                                    { label: 'From Inventory', value: 'inventory' },
+                                    { label: 'Direct Purchase', value: 'direct' }
                                 ]}
                                 {...form.getInputProps('feed_source')}
                             />
+
+                            {form.values.feed_source === 'inventory' ? (
+                                <Select 
+                                    label={isFeed ? "Select Feed Item" : "Select Medicine"}
+                                    placeholder="Choose from stock..."
+                                    data={inventoryOptions}
+                                    searchable
+                                    nothingFoundMessage="Item not found in inventory"
+                                    {...form.getInputProps('resource_id')}
+                                    mt="sm"
+                                />
+                            ) : (
+                                isFeed ? (
+                                    <Autocomplete 
+                                        label="Feed Name"
+                                        placeholder="e.g. Napier Grass"
+                                        data={availableFeeds}
+                                        mt="sm"
+                                        {...form.getInputProps('feed_name')}
+                                    />
+                                ) : (
+                                    <TextInput 
+                                        label="Medicine Name"
+                                        placeholder="e.g. Antibiotics"
+                                        mt="sm"
+                                        {...form.getInputProps('feed_name')} // Reusing feed_name field for simplicity in DB
+                                    />
+                                )
+                            )}
+
+                            <TextInput 
+                                label={config.valLabel} 
+                                placeholder="0.00" type="number" 
+                                mt="sm"
+                                required
+                                {...form.getInputProps('value')} 
+                            />
                             
+                            {/* Cost Input: Only for Direct Purchase */}
                             {form.values.feed_source === 'direct' && (
                                 <NumberInput 
                                     label={`Cost (${settings.currency})`} 
-                                    description="Enter the amount you paid just now"
+                                    mt="sm"
                                     {...form.getInputProps('cost')} 
                                 />
                             )}
                         </>
                     )}
 
-                    {/* --- WEIGHT LOGIC --- */}
-                    {type === 'weight' && (
+                    {/* --- OTHER TYPES (Weight, Production) --- */}
+                    {!isFeed && !isMedical && type !== 'slaughter' && type !== 'sale' && type !== 'death' && (
                         <TextInput 
-                            label={`New Weight (${settings.weightUnit})`} 
+                            label={config.valLabel} 
                             type="number"
                             {...form.getInputProps('value')} 
                         />
                     )}
 
-                    {/* --- PRODUCTION LOGIC --- */}
-                    {(type === 'produce_milk' || type === 'produce_egg') && (
-                        <>
-                            <TextInput 
-                                label={`Quantity Produced (${type === 'produce_milk' ? 'L' : 'Count'})`} 
-                                type="number"
-                                {...form.getInputProps('value')} 
-                            />
-                            <Divider label="Sales (Optional)" labelPosition="center" />
-                            <Group grow>
-                                <TextInput 
-                                    label="Quantity Sold" 
-                                    type="number"
-                                    placeholder="Leave empty if none sold"
-                                    {...form.getInputProps('sold_qty')}
-                                />
-                                <TextInput 
-                                    label={`Income (${settings.currency})`}
-                                    type="number"
-                                    placeholder="Amount received"
-                                    disabled={!form.values.sold_qty}
-                                    {...form.getInputProps('income')}
-                                />
-                            </Group>
-                        </>
-                    )}
-
-                    {/* --- SLAUGHTER LOGIC --- */}
+                    {/* --- SLAUGHTER / SALE LOGIC (Keep existing) --- */}
                     {type === 'slaughter' && (
                         <>
                             <Group grow>
@@ -236,7 +269,6 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
                         </>
                     )}
 
-                    {/* --- SALE (LIVE) LOGIC --- */}
                     {type === 'sale' && (
                         <Group grow>
                             <TextInput label={`Sold Weight (${settings.weightUnit})`} type="number" {...form.getInputProps('value')} />
@@ -244,7 +276,7 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
                         </Group>
                     )}
 
-                    {/* MULTI-TARGET DIVISOR CHECKBOX */}
+                    {/* MULTI-TARGET DIVISOR */}
                     {isMultiTarget && (['feed', 'sale', 'slaughter', 'produce_milk', 'produce_egg'].includes(type)) && (
                         <Checkbox 
                             mt="md"
@@ -253,8 +285,7 @@ export function LogEventModal({ opened, close, animalIds, groupId, initialEventT
                         />
                     )}
 
-                    {/* COMMON NOTES */}
-                    <TextInput label="Notes" placeholder="Optional details..." mt="md" {...form.getInputProps('notes')} />
+                    <TextInput label={config.noteLabel} placeholder="..." mt="md" {...form.getInputProps('notes')} />
 
                     <Button type="submit" loading={mutation.isPending} mt="xl" fullWidth>Save Record</Button>
                 </Stack>

@@ -1,11 +1,13 @@
 import { Paper, Text, Table, Badge, Group, ScrollArea, ThemeIcon, Grid } from '@mantine/core';
 import { IconAlertTriangle, IconCalendarEvent, IconTrendingUp, IconTrendingDown } from '@tabler/icons-react';
+import { useSettings } from '../../context/SettingsContext';
 
 export function DashboardWidgets({ data }: { data: any }) {
+    const { formatCurrency } = useSettings();
     
     // 1. Low Stock Widget
     const stockRows = data?.low_stock?.map((item: any) => (
-        <Table.Tr key={item.name}>
+        <Table.Tr key={item.name}> {/* FIXED TYPO HERE */}
             <Table.Td>{item.name}</Table.Td>
             <Table.Td>
                 <Badge color="red" variant="light">
@@ -28,7 +30,7 @@ export function DashboardWidgets({ data }: { data: any }) {
             </Table.Td>
             <Table.Td align="right">
                 <Text size="sm" fw={500} c={item.type === 'income' ? 'teal' : 'red'}>
-                    {item.type === 'income' ? '+' : '-'}${item.amount}
+                    {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amount)}
                 </Text>
             </Table.Td>
         </Table.Tr>
@@ -83,7 +85,12 @@ export function DashboardWidgets({ data }: { data: any }) {
                 <Paper withBorder p="md" radius="md">
                     <Text fw={700} mb="md">Recent Transactions</Text>
                     <Table>
-                        <Table.Tbody>{financeRows}</Table.Tbody>
+                        <Table.Tbody>
+                            {financeRows}
+                            {(!data?.recent_finance || data.recent_finance.length === 0) && (
+                                <Table.Tr><Table.Td><Text c="dimmed">No recent transactions found.</Text></Table.Td></Table.Tr>
+                            )}
+                        </Table.Tbody>
                     </Table>
                 </Paper>
             </Grid.Col>

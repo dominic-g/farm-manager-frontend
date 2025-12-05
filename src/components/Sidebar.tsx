@@ -59,7 +59,31 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
   const mainMenu = [
       { label: 'Dashboard', icon: IconChartBar, link: '/' },
       { label: 'Animal Types', icon: IconPaw, link: '/types' }, // Link to the list page
+
+
+      // Financials
       { 
+          label: 'Financials', 
+          icon: IconReceipt2, 
+          links: [
+              { label: 'Dashboard', link: '/finance' }, // Dashboard Overview
+              { label: 'Ledger', link: '/finance/list' }, // The Table
+          ] 
+      },
+      // Inventory
+      { 
+          label: 'Inventory & Resources', 
+          icon: IconBuildingWarehouse, 
+          links: [
+              { label: 'Dashboard', link: '/resources' }, // Dashboard Overview
+              { label: 'Stock List', link: '/resources/list' }, // The Table
+          ]
+      },
+      
+      /*{ label: 'Inventory & Resources', icon: IconBuildingWarehouse, link: '/resources' },
+      { label: 'Financials', icon: IconReceipt2, link: '/finance' },
+      */
+      /*{ 
           label: 'Inventory & Resources', 
           icon: IconBuildingWarehouse, 
           links: [
@@ -67,7 +91,7 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
               { label: 'Medicine', link: '/resources/medicine' },
               { label: 'Equipment', link: '/resources/equipment' }
           ]
-      },
+      },*/
       { 
           label: 'Health & Vet', 
           icon: IconVaccine, 
@@ -76,7 +100,7 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
               { label: 'Treatment Logs', link: '/health/treatments' }
           ]
       },
-      { 
+      /*{ 
           label: 'Financials', 
           icon: IconReceipt2, 
           links: [
@@ -84,7 +108,7 @@ export function Sidebar({ openCreateModal }: { openCreateModal: () => void }) {
               { label: 'Income', link: '/finance/income' },
               { label: 'Expenses', link: '/finance/expenses' }
           ] 
-      },
+      },*/
       { 
           label: 'Reports', 
           icon: IconFileAnalytics, 

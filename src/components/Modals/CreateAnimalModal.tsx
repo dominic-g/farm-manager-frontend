@@ -93,12 +93,16 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
                 farm_dam: values.dam,
             };
             // return axios.post(`${WP_API}/animals`, payload);
+
+            const customApi = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
+            const standardApi = import.meta.env.VITE_API_BASE_URL;
+            
             if (isEdit) {
                 // UPDATE
-                return axios.put(`${WP_API}/farm_animal/${editData.ID}`, payload);
+                return axios.post(`${standardApi}/farm_animal/${editData.ID}`, payload); 
             } else {
                 // CREATE
-                return axios.post(`${WP_API}/farm_animal`, payload);
+                return axios.post(`${customApi}/animals`, payload);
             }
         },
         onSuccess: (res) => {
