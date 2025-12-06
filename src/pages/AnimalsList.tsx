@@ -76,7 +76,8 @@ export function AnimalsList() {
                     max_age: ageRange[1],
                     search: searchTerm,
                     page: page,
-                    per_page: PER_PAGE
+                    per_page: PER_PAGE,
+                    status: 'active,lactating'
                 },
                 paramsSerializer: { indexes: null } 
             });
@@ -167,7 +168,25 @@ export function AnimalsList() {
     };
 
     const handleEdit = (animal: any) => {
-        setEditAnimal(animal); 
+
+        const editData = {
+            ID: animal.ID,
+            tag: animal.tag,
+            gender: animal.gender,
+            weight: animal.weight,
+            
+            // Pass the new fields
+            dob: animal.dob, 
+            color: animal.color, 
+            
+            // Pass relationships if available in list (or fetch inside modal)
+            sire: animal.parents?.sire_id,
+            dam: animal.parents?.dam_id,
+
+            breed_ids: animal.breed_ids,
+            group_ids: animal.group_ids
+        };
+        setEditAnimal(editData); 
         setModalOpened(true);
     };
 
@@ -182,9 +201,18 @@ export function AnimalsList() {
     const rows = animals.map((animal: any) => {
         const isSelected = selection.includes(animal.ID) || selectAllServer;
         return (
-            <Table.Tr key={animal.ID} bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}>
+            <Table.Tr 
+                key={animal.ID} 
+                bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined} 
+                style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                 onClick={() => navigate(`/animal/${slug}/${animal.tag}`)}
+            >
                 <Table.Td>
-                    <Checkbox checked={isSelected} onChange={() => toggleRow(animal.ID)} />
+                    <Checkbox 
+                        checked={isSelected} 
+                        onChange={() => toggleRow(animal.ID)}
+                        onClick={(e) => e.stopPropagation()} 
+                    />
                 </Table.Td>
                 <Table.Td fw={700}>{animal.tag}</Table.Td>
                 <Table.Td style={{ textTransform: 'capitalize' }}>{animal.gender}</Table.Td>
@@ -192,10 +220,17 @@ export function AnimalsList() {
                 <Table.Td>{animal.age_days}d</Table.Td>
                 <Table.Td>
                     <Group gap="xs">
-                        <ActionIcon variant="subtle" color="gray" onClick={() => navigate(`/animal/${slug}/${animal.tag}`)}>
+                        {/*<ActionIcon variant="subtle" color="gray" onClick={() => navigate(`/animal/${slug}/${animal.tag}`)}>
                             <IconEye size={16}/>
-                        </ActionIcon>
-                        <ActionIcon variant="subtle" color="blue" onClick={() => handleEdit(animal)}>
+                        </ActionIcon>*/}
+                        <ActionIcon 
+                            variant="subtle" 
+                            color="blue" 
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click
+                                handleEdit(animal);
+                            }}
+                        >
                             <IconEdit size={16}/>
                         </ActionIcon>
                     </Group>

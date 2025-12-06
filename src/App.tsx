@@ -19,6 +19,7 @@ import { FinanceDashboard } from './pages/FinanceDashboard';
 import { ResourcesList } from './pages/ResourcesList';
 import { ResourcesDashboard } from './pages/ResourcesDashboard';
 import { ResourceDetails } from './pages/ResourceDetails';
+import { BirthLog } from './pages/BirthLog';
 
 
 // Setup Query Client
@@ -30,9 +31,6 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     return children;
 };
 
-// Placeholder for the specific Animal Dashboard
-const AnimalDashboard = () => <h2>Animal Type Dashboard (Coming Soon)</h2>;
-// const GlobalDashboard = () => <h2>Global Farm Analytics (Coming Soon)</h2>;
 
 function AppContent() {
     const [opened, { open, close }] = useDisclosure(false);
@@ -58,7 +56,10 @@ function AppContent() {
                 {/* Protected Routes wrapped in Main Layout */}
                 <Route path="/" element={
                     <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}>
+                        {/*
                         <MainLayout openCreateModal={open}>
+                        */}
                             <GlobalDashboard />
                         </MainLayout>
                     </ProtectedRoute>
@@ -115,6 +116,12 @@ function AppContent() {
                     </ProtectedRoute>
                 } />
 
+                <Route path="/birth/:id" element={
+                    <ProtectedRoute>
+                        <MainLayout openCreateModal={handleOpenCreate}><BirthLog /></MainLayout>
+                    </ProtectedRoute>
+                } />
+
                 <Route path="/resources/:id" element={
                     <ProtectedRoute>
                         <MainLayout openCreateModal={handleOpenCreate}><ResourceDetails /></MainLayout>
@@ -131,7 +138,7 @@ function AppContent() {
                     </ProtectedRoute>
                 } />
 
-                // Finance
+                {/* Finance */ }
                 <Route path="/finance/list" element={
                     <ProtectedRoute>
                         <MainLayout openCreateModal={handleOpenCreate}><FinanceList /></MainLayout>

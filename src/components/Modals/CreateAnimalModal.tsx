@@ -15,11 +15,13 @@ interface Props {
     close: () => void;
     parentType: any;
     editData?: any;
+    isBirth?: boolean;
+    initialParents?: { sire: string | null; dam: string | null };
 }
 
 const WP_API = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
 
-export function CreateAnimalModal({ opened, close, parentType, editData }: Props) {
+export function CreateAnimalModal({ opened, close, parentType, editData, isBirth, initialParents }: Props) {
     const queryClient = useQueryClient();
     const isEdit = !!editData;
     // const { data: breeds } = useBreeds(parentType?.id);
@@ -47,8 +49,10 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
             count_male: 0,
             count_female: 0,
             total_weight: 0,
-            sire: null as string | null,
-            dam: null as string | null,
+            // sire: null as string | null,
+            // dam: null as string | null,
+            sire: initialParents?.sire || null,
+            dam: initialParents?.dam || null,
         },
         validate: {
             tag: (val, values) => (mode === 'single' && val.length < 1 ? 'Tag is required' : null),
@@ -59,18 +63,38 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
     const lifecycle = parentType?.farm_lifecycle || {};
 
     useEffect(() => {
-        if (opened && editData) {
-            form.setValues({
-                tag: editData.tag,
-                gender: editData.gender,
-                // ... map other fields ...
-                // Note: Breeds/Groups come as names in the list view, 
-                // you might need to fetch detailed animal data if IDs aren't present
-            });
-        } else if (opened && !editData) {
-            form.reset();
+        if (opened) {
+            if (isBirth && initialParents) {
+                // Force Bulk Mode for birth usually, or let user choose
+                setMode('bulk'); 
+                form.setValues({
+                    sire: initialParents.sire,
+                    dam: initialParents.dam,
+                    breeds: [], // Leave empty so backend auto-calculates from parents
+                    dob: new Date() // Today is birth date
+                });
+            }
+            if (editData) {
+                form.setValues({
+                    tag: editData.tag,
+                    gender: editData.gender,
+                    weight: editData.weight || 0,
+                    color: editData.color || '',
+
+                    dob: editData.dob ? new Date(editData.dob) : new Date(),
+
+                    // Map Parents
+                    sire: editData.sire || null,
+                    dam: editData.dam || null,
+                    
+                    breeds: editData.breed_ids ? editData.breed_ids.map(String) : [],
+                    groups: editData.group_ids ? editData.group_ids.map(String) : [],
+                });
+            } else {
+                form.reset();
+            }
         }
-    }, [opened, editData]);
+    }, [opened, editData, initialParents]);
 
     const mutation = useMutation({
         mutationFn: async (values: typeof form.values) => {
@@ -88,7 +112,7 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
                 count_male: isBulk ? values.count_male : 0,
                 count_female: isBulk ? values.count_female : 0,
                 total_weight: isBulk ? values.total_weight : 0,
-
+                is_birth: isBirth,
                 farm_sire: values.sire,
                 farm_dam: values.dam,
             };
@@ -96,7 +120,7 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
 
             const customApi = import.meta.env.VITE_API_BASE_URL.replace('/wp/v2', '/farm/v1');
             const standardApi = import.meta.env.VITE_API_BASE_URL;
-            
+
             if (isEdit) {
                 // UPDATE
                 return axios.post(`${standardApi}/farm_animal/${editData.ID}`, payload); 
@@ -256,27 +280,32 @@ export function CreateAnimalModal({ opened, close, parentType, editData }: Props
                         )}
                     </Group>
 
-                    <Divider label="Parentage (Optional)" labelPosition="center" />
-                    <Group grow>
-                        <ParentSelect 
-                            label="Sire (Father)" 
-                            typeId={parentType.id} 
-                            gender="male"
-                            value={form.values.sire}
-                            onChange={(val) => form.setFieldValue('sire', val)}
-                            childDob={form.values.dob}
-                            config={lifecycle}
-                        />
-                        <ParentSelect 
-                            label="Dam (Mother)" 
-                            typeId={parentType.id} 
-                            gender="female"
-                            value={form.values.dam}
-                            onChange={(val) => form.setFieldValue('dam', val)}
-                            childDob={form.values.dob}
-                            config={lifecycle}
-                        />
-                    </Group>
+
+                    {!isBirth && (
+                        <>
+                            <Divider label="Parentage (Optional)" labelPosition="center" />
+                            <Group grow>
+                                <ParentSelect 
+                                    label="Sire (Father)" 
+                                    typeId={parentType.id} 
+                                    gender="male"
+                                    value={form.values.sire}
+                                    onChange={(val) => form.setFieldValue('sire', val)}
+                                    childDob={form.values.dob}
+                                    config={lifecycle}
+                                />
+                                <ParentSelect 
+                                    label="Dam (Mother)" 
+                                    typeId={parentType.id} 
+                                    gender="female"
+                                    value={form.values.dam}
+                                    onChange={(val) => form.setFieldValue('dam', val)}
+                                    childDob={form.values.dob}
+                                    config={lifecycle}
+                                />
+                            </Group>
+                        </>
+                    )}
 
                     <Button type="submit" loading={mutation.isPending} mt="md" fullWidth>Save</Button>
                 </Stack>
